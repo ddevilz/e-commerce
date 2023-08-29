@@ -5,9 +5,11 @@ import { Adapter } from "next-auth/adapters";
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { env } from "@/lib/env";
+import { mergeAnonymousCartIntoUserCart } from "@/lib/db/cart";
+import { PrismaClient } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
+  adapter: PrismaAdapter(prisma as PrismaClient) as Adapter,
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_CLIENT_ID,
@@ -17,7 +19,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     session({ session, user }) {
       session.user.id = user.id;
-      return session
+      return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      await mergeAnonymousCartIntoUserCart(user.id);
     },
   },
 };
